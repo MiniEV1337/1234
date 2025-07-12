@@ -1,0 +1,108 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_DB: news_db
+      POSTGRES_USER: news_user
+      POSTGRES_PASSWORD: news_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7
+    container_name: redis
+    restart: always
+    volumes:
+      - redis_data:/data
+
+  newsbot:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: zipwinrar_newsbot
+    restart: unless-stopped
+    environment:
+      # Основные настройки бота
+      - BOT_TOKEN=${BOT_TOKEN}
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - ADMIN_ID=${ADMIN_ID}
+      
+      # API ключи
+      - TOGETHER_API_KEY=${TOGETHER_API_KEY}
+      
+      # Настройки логирования
+      - LOG_LEVEL=INFO
+      - PYTHONUNBUFFERED=1
+      
+      # Настройки кеша
+      - CACHE_DIR=/app/cache/news
+      - MAX_CACHE_AGE_HOURS=48
+      
+      # Настройки планировщика
+      - FULL_UPDATE_INTERVAL=3600
+      - CLEANUP_INTERVAL=21600
+      - CATEGORY_UPDATE_INTERVAL=1800
+      
+    volumes:
+      # Логи
+      - ./logs:/app/logs
+      # Кеш новостей
+      - ./cache:/app/cache
+      # Конфигурация (опционально)
+      - ./.env:/app/.env:ro
+      
+    networks:
+      - newsbot_network
+      
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os; exit(0 if os.path.exists('/app/logs/bot.log') else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+      
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  admin_panel:
+    build: ./admin_panel
+    ports:
+      - "8000:8000"
+    restart: always
+    depends_on:
+      - postgres
+
+  rqdashboard:
+    image: eoranged/rq-dashboard
+    ports:
+      - "9181:9181"
+    environment:
+      - RQ_DASHBOARD_REDIS_URL=redis://redis:6379
+    restart: always
+    depends_on:
+      - redis
+
+networks:
+  newsbot_network:
+    driver: bridge
+    name: zipwinrar_newsbot_network
+
+volumes:
+  redis_data:
+  postgres_data:
+  newsbot_logs:
+    driver: local
+  newsbot_cache:
+    driver: local

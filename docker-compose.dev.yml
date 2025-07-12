@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  newsbot-dev:
+    container_name: zipwinrar_newsbot_dev
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+    env_file:
+      - .env.local
+    volumes:
+      - .:/app
+      - "E:\\Программы\\Prem Bot News\\Архив Новостей:/app/news_archive"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - newsbot_dev_network
+    restart: unless-stopped
+    command: ["python", "/app/bot/main.py"]
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: newsbot_db
+      POSTGRES_USER: newsbot
+      POSTGRES_PASSWORD: newsbot123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - newsbot_dev_network
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    networks:
+      - newsbot_dev_network
+    ports:
+      - "6379:6379"
+
+  admin_panel:
+    build:
+      context: ./admin_panel
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://newsbot:newsbot123@postgres:5432/newsbot_db
+    depends_on:
+      - postgres
+    networks:
+      - newsbot_dev_network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  newsbot_dev_network:
+    driver: bridge

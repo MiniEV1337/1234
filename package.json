@@ -1,0 +1,16 @@
+{
+  "name": "zipwinrar-telegram-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot for news aggregation and processing",
+  "main": "index.js",
+  "scripts": {
+    "start": "echo 'This is a Python project'",
+    "build": "echo 'Build completed'"
+  },
+  "keywords": ["telegram", "bot", "news", "python"],
+  "author": "ZIPWinRAR Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
